@@ -1,33 +1,30 @@
 require 'open-uri'
 
 class GamesController < ApplicationController
+  VOWELS = %w(A E I O U Y)
+
   def new
-    @letters = Array.new(10) { ('a'..'z').to_a.sample }
+    @letters = Array.new(5) { VOWELS.sample }
+    @letters += Array.new(5) { (('A'..'Z').to_a - VOWELS).sample }
+    @letters.shuffle!
   end
 
   def score
-    submitted_word = params[:word]
-    original_letters = params[:letters]
-
-    if valid_word?(submitted_word, @letters)
-      if valid_english_word?(submitted_word)
-        @result = "Congratulations! #{submitted_word} is a valid English word."
-      else
-        @result = "#{submitted_word} is not a valid English word."
-      end
-    else
-      @result = "#{submitted_word} can't be built out of the original grid."
-    end
+    @letters = params[:letters].split
+    @word = (params[:word] || "").upcase
+    @included = included?(@word, @letters)
+    @english_word = english_word?(@word)
   end
 
   private
 
-  def valid_word?(word, grid)
-    word.chars.all? { |letter| word.count(letter) <= grid.count(letter) }
+  def included?(word, letters)
+    word.chars.all? { |letter| word.count(letter) <= letters.count(letter) }
   end
 
-  def valid_english_word?(word)
-    response = JSON.parse(open("https://wagon-dictionary.herokuapp.com/#{word}").read)
-    response['found']
+  def english_word?(word)
+    response = URI.open("https://wagon-dictionary.herokuapp.com/#{word}")
+    json = JSON.parse(response.read)
+    json['found']
   end
 end
